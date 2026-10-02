@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle of Kingdoms - Classroom Gamification</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts for Medieval & Clean Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        medieval: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        amber: { 850: '#6d300c' },
+                        wood: '#2d1b0e',
+                        parchment: '#f8f1e5',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Custom medieval parchment and game animations */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .font-medieval {
+            font-family: 'Cinzel', serif;
+        }
+
+        .parchment-card {
+            background: radial-gradient(circle, #fdfbf7 0%, #f4ece1 100%);
+            color: #2b1a09;
+            border: 3px solid #854d0e;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 0 15px rgba(133, 77, 14, 0.2);
+        }
+
+        .wood-panel {
+            background: linear-gradient(180deg, #422006 0%, #2e1605 100%);
+            border: 3px solid #78350f;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 8px 16px rgba(0,0,0,0.6);
+        }
+
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.6);
+        }
+
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a16207;
+            border-radius: 4px;
+        }
+
+        /* Shake animation for attack */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-12px) rotate(-2deg); }
+            40% { transform: translateX(12px) rotate(2deg); }
+            60% { transform: translateX(-8px) rotate(-1deg); }
+            80% { transform: translateX(8px) rotate(1deg); }
+        }
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Floating animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* Pulse glow */
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(234,179,8,0.4)); }
+            50% { filter: drop-shadow(0 0 20px rgba(234,179,8,0.9)); }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col min-h-screen">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900/90 border-b border-amber-600/40 px-4 py-3 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('home')">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 text-xl font-bold shadow-lg shadow-amber-500/20">
+                <i class="fa-solid font-medieval">⚔️</i>
+            </div>
+            <div>
+                <h1 class="font-medieval text-xl font-black tracking-wider text-amber-400 uppercase leading-none">Battle of Kingdoms</h1>
+                <p class="text-xs text-amber-200/70 font-medium">Classroom Learning Gamification V1</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <!-- Toast notification container -->
+            <div id="toast-container" class="fixed top-16 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+            <button onclick="toggleAudioMute()" id="audio-toggle-btn" class="p-2.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg border border-amber-500/30 transition flex items-center gap-2 text-sm">
+                <i id="audio-icon" class="fa-solid fa-volume-high"></i>
+                <span class="hidden sm:inline text-xs font-semibold">Sound</span>
+            </button>
+            <button onclick="toggleFullscreen()" class="p-2.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg border border-amber-500/30 transition flex items-center gap-2 text-sm">
+                <i class="fa-solid fa-expand"></i>
+                <span class="hidden sm:inline text-xs font-semibold">Fullscreen</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-7xl">
+
+        <!-- VIEW 1: HOME PAGE -->
+        <section id="view-home" class="view-section transition-all duration-300">
+            <div class="relative rounded-3xl overflow-hidden border-2 border-amber-600/50 shadow-2xl bg-slate-900/80 mb-8 p-8 md:p-12 text-center flex flex-col items-center justify-center min-h-[420px]">
+                <!-- Fantasy Visual BG Overlay -->
+                <div class="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#eab308_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                
+                <div class="animate-float mb-4 text-6xl">
+                    🏰
+                </div>
+
+                <h2 class="font-medieval text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 mb-3 drop-shadow-md tracking-wider">
+                    BATTLE OF KINGDOMS
+                </h2>
+                <p class="text-amber-100/80 text-lg md:text-xl max-w-2xl mb-8 font-medium">
+                    Build Your Kingdom. Answer Questions. Attack Foes. Survive & Conquer the Classroom!
+                </p>
+
+                <!-- Quick Action Buttons -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-3xl">
+                    <button onclick="startNewGameSetup()" class="p-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-medieval font-bold text-lg shadow-lg shadow-amber-500/30 hover:scale-[1.02] transition flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-crown text-xl"></i> CREATE NEW GAME
+                    </button>
+                    
+                    <button id="btn-continue-game" onclick="resumeSavedGame()" class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-medieval font-bold text-lg shadow-md hover:scale-[1.02] transition flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-play text-xl"></i> CONTINUE GAME
+                    </button>
+
+                    <button onclick="navigateTo('question-bank')" class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-medieval font-bold text-lg shadow-md hover:scale-[1.02] transition flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-book-open text-xl"></i> QUESTION BANK
+                    </button>
+
+                    <button onclick="navigateTo('game-history')" class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-medieval font-bold text-lg shadow-md hover:scale-[1.02] transition flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-clock-rotate-left text-xl"></i> GAME HISTORY
+                    </button>
+
+                    <button onclick="navigateTo('backup-data')" class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-medieval font-bold text-lg shadow-md hover:scale-[1.02] transition flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-floppy-disk text-xl"></i> BACKUP & RESTORE
+                    </button>
+
+                    <button onclick="navigateTo('settings')" class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 font-medieval font-bold text-lg shadow-md hover:scale-[1.02] transition flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-gear text-xl"></i> SETTINGS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pre-loaded Stats / Quick Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-900/60 border border-amber-500/20 rounded-2xl p-6 flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl border border-amber-500/30">
+                        <i class="fa-solid fa-file-question"></i>
+                    </div>
+                    <div>
+                        <div id="stat-total-questions" class="text-2xl font-bold text-slate-100">0</div>
+                        <div class="text-xs text-amber-200/60 uppercase tracking-wider font-semibold">Questions Ready</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 border border-amber-500/20 rounded-2xl p-6 flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl border border-amber-500/30">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div>
+                        <div id="stat-total-games" class="text-2xl font-bold text-slate-100">0</div>
+                        <div class="text-xs text-amber-200/60 uppercase tracking-wider font-semibold">Games Completed</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 border border-amber-500/20 rounded-2xl p-6 flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl border border-amber-500/30">
+                        <i class="fa-solid fa-wifi"></i>
+                    </div>
+                    <div>
+                        <div class="text-xl font-bold text-emerald-400">100% Offline</div>
+                        <div class="text-xs text-amber-200/60 uppercase tracking-wider font-semibold">Saved in Browser</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: CREATE GAME SETUP -->
+        <section id="view-create-game" class="view-section hidden max-w-4xl mx-auto">
+            <div class="bg-slate-900 border-2 border-amber-600/40 rounded-3xl p-6 md:p-8 shadow-xl">
+                <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-4">
+                    <h2 class="font-medieval text-2xl md:text-3xl font-bold text-amber-400 flex items-center gap-3">
+                        <i class="fa-solid fa-scroll"></i> Step 1: Game & Team Setup
+                    </h2>
+                    <button onclick="navigateTo('home')" class="text-slate-400 hover:text-slate-200">
+                        <i class="fa-solid fa-xmark text-2xl"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Game Name -->
+                    <div>
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Game Title / Topic</label>
+                        <input type="text" id="setup-game-title" value="Battle of Algebra" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-amber-400">
+                    </div>
+
+                    <!-- Subject -->
+                    <div>
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Subject</label>
+                        <select id="setup-subject" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-amber-400">
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="English">English</option>
+                            <option value="Social Studies">Social Studies</option>
+                            <option value="Informatics">Informatics</option>
+                            <option value="General Knowledge">General Knowledge</option>
+                        </select>
+                    </div>
+
+                    <!-- Number of Teams -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Number of Kingdoms (2 to 6)</label>
+                        <div class="flex gap-3">
+                            <template id="team-count-options">
+                                <!-- generated via js -->
+                            </template>
+                            <div id="team-count-container" class="flex gap-3 w-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Customization List -->
+                <h3 class="font-medieval text-xl font-bold text-amber-300 mb-4 border-b border-slate-800 pb-2">Customize Kingdoms</h3>
+                <div id="setup-teams-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <!-- Dynamic teams cards injected here -->
+                </div>
+
+                <!-- Navigation buttons -->
+                <div class="flex justify-between items-center pt-4 border-t border-slate-800">
+                    <button onclick="navigateTo('home')" class="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold">
+                        Cancel
+                    </button>
+                    <button onclick="proceedToSettings()" class="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-medieval font-bold text-lg hover:brightness-110 shadow-lg">
+                        Next: Game Rules <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: GAME SETTINGS & RULES -->
+        <section id="view-game-settings" class="view-section hidden max-w-4xl mx-auto">
+            <div class="bg-slate-900 border-2 border-amber-600/40 rounded-3xl p-6 md:p-8 shadow-xl">
+                <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-4">
+                    <h2 class="font-medieval text-2xl md:text-3xl font-bold text-amber-400 flex items-center gap-3">
+                        <i class="fa-solid fa-sliders"></i> Step 2: Battle Rules & Settings
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Starting Kingdom HP</label>
+                        <input type="number" id="setting-start-hp" value="100" min="10" max="500" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-100">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Starting Gold</label>
+                        <input type="number" id="setting-start-gold" value="0" min="0" max="200" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-100">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Turn Time Limit (Seconds)</label>
+                        <select id="setting-turn-time" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-100">
+                            <option value="0">Unlimited (Teacher Manual)</option>
+                            <option value="15">15 Seconds</option>
+                            <option value="30" selected>30 Seconds</option>
+                            <option value="45">45 Seconds</option>
+                            <option value="60">60 Seconds</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-amber-200 mb-2">Questions Filter Subject</label>
+                        <select id="setting-question-filter" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-3 text-slate-100">
+                            <option value="ALL">All Subjects in Question Bank</option>
+                            <!-- Injected dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Togglable Game Mechanics -->
+                    <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="setting-wrong-penalty" checked class="w-5 h-5 accent-amber-500 rounded">
+                            <span class="text-sm font-semibold text-amber-100">Wrong Answer Penalty (-5 HP)</span>
+                        </label>
+
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="setting-random-events" checked class="w-5 h-5 accent-amber-500 rounded">
+                            <span class="text-sm font-semibold text-amber-100">Enable Kingdom Events</span>
+                        </label>
+
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="setting-critical-hits" checked class="w-5 h-5 accent-amber-500 rounded">
+                            <span class="text-sm font-semibold text-amber-100">10% Critical Attack Chance</span>
+                        </label>
+
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="setting-power-cards" checked class="w-5 h-5 accent-amber-500 rounded">
+                            <span class="text-sm font-semibold text-amber-100">Power Cards on Hard/Boss</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-800">
+                    <button onclick="navigateTo('create-game')" class="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold">
+                        Back
+                    </button>
+                    <button onclick="initiateBattleGame()" class="px-8 py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-500 text-white font-medieval font-bold text-xl hover:brightness-110 shadow-lg shadow-red-900/50 flex items-center gap-2">
+                        ⚔️ START BATTLE!
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: BATTLE GAME ARENA SCREEN (MAIN GAMEPLAY) -->
+        <section id="view-battle" class="view-section hidden">
+            <!-- Top Control Bar for Teacher -->
+            <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <span class="bg-amber-500/20 text-amber-300 px-3 py-1 rounded-lg font-medieval font-bold border border-amber-500/30" id="battle-game-title">
+                        Battle of Algebra
+                    </span>
+                    <span class="text-sm font-bold text-slate-300">
+                        ROUND <span id="battle-round-num" class="text-amber-400 text-lg">1</span>
+                    </span>
+                </div>
+
+                <!-- Timer & Controls -->
+                <div class="flex items-center space-x-4">
+                    <div id="battle-timer-display" class="bg-slate-950 px-4 py-1.5 rounded-xl border border-amber-500/30 flex items-center gap-2 font-mono text-xl font-bold text-amber-400">
+                        <i class="fa-solid fa-hourglass-half"></i> <span id="timer-sec">30</span>s
+                    </div>
+
+                    <button onclick="togglePauseTimer()" id="btn-pause-timer" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-xl border border-slate-700">
+                        <i class="fa-solid fa-pause"></i>
+                    </button>
+
+                    <button onclick="openTeacherControlModal()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 text-sm font-semibold rounded-xl border border-amber-500/40 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chalkboard-user"></i> Teacher Controls
+                    </button>
+                </div>
+            </div>
+
+            <!-- Current Active Turn Notification Header -->
+            <div id="turn-banner" class="mb-6 p-4 rounded-2xl text-center font-medieval font-black text-2xl transition-all duration-300 flex items-center justify-center gap-4 border-2">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Kingdoms Overview Cards Grid -->
+            <div id="battle-kingdoms-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                <!-- Dynamically rendered team cards showing HP, Shield, Gold, Score, Status -->
+            </div>
+
+            <!-- Main Interactive Display: Question Box / Reward / Action Area -->
+            <div class="parchment-card rounded-3xl p-6 md:p-8 relative min-h-[360px] flex flex-col justify-between overflow-hidden">
+                <!-- Question Details Header -->
+                <div class="flex justify-between items-center border-b border-amber-900/20 pb-3 mb-4">
+                    <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                        <span id="q-subject-badge" class="bg-amber-200/80 px-2.5 py-0.5 rounded-md border border-amber-800/30">Math</span>
+                        <span id="q-difficulty-badge" class="bg-amber-800 text-amber-100 px-2.5 py-0.5 rounded-md text-xs uppercase tracking-wider">EASY</span>
+                    </div>
+                    <div id="q-reward-indicator" class="font-medieval font-bold text-amber-900 text-sm">
+                        Reward: <span class="text-amber-700 font-extrabold text-base">+10 🪙 Gold</span>
+                    </div>
+                </div>
+
+                <!-- Question Text -->
+                <div class="my-auto py-4 text-center">
+                    <h3 id="battle-question-text" class="text-2xl md:text-3xl font-extrabold text-slate-900 leading-snug">
+                        Loading question...
+                    </h3>
+                </div>
+
+                <!-- Answer Input / Options Grid -->
+                <div id="battle-answer-area" class="mt-6">
+                    <!-- Rendered dynamically depending on question type (Multiple choice, T/F, Short, Essay) -->
+                </div>
+
+                <!-- Action Bar (Shop / Attack / Skip / Next Turn) -->
+                <div id="battle-action-bar" class="mt-6 pt-4 border-t border-amber-900/20 flex flex-wrap justify-between items-center gap-3">
+                    <button onclick="openKingdomShop()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 text-slate-950 font-medieval font-bold shadow hover:brightness-110 flex items-center gap-2">
+                        <i class="fa-solid fa-[#000]">🪙</i> KINGDOM SHOP
+                    </button>
+
+                    <div id="post-answer-actions" class="flex items-center gap-3 hidden">
+                        <button onclick="prepareAttackTargetSelection()" class="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medieval font-bold shadow-lg flex items-center gap-2">
+                            ⚔️ ATTACK ENEMY
+                        </button>
+                        <button onclick="nextTurn()" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm">
+                            End Turn <i class="fa-solid fa-forward ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 5: QUESTION BANK MANAGEMENT -->
+        <section id="view-question-bank" class="view-section hidden">
+            <div class="bg-slate-900 border-2 border-amber-600/40 rounded-3xl p-6 md:p-8">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="font-medieval text-3xl font-bold text-amber-400">
+                            <i class="fa-solid fa-book-open"></i> Question Bank Repository
+                        </h2>
+                        <p class="text-xs text-amber-200/60 font-medium">Create, edit, import or export questions for your classroom</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="openQuestionModal()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add Question
+                        </button>
+                        <button onclick="triggerCSVImport()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-sm font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-file-import"></i> Import CSV/JSON
+                        </button>
+                        <button onclick="exportQuestionsJSON()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-sm font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-file-export"></i> Export JSON
+                        </button>
+                        <input type="file" id="input-import-file" class="hidden" accept=".json,.csv" onchange="handleImportFile(event)">
+                    </div>
+                </div>
+
+                <!-- Search and Filters Bar -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <input type="text" id="qb-search" oninput="filterQuestionBankTable()" placeholder="Search questions..." class="bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-2.5 text-sm text-slate-100">
+                    
+                    <select id="qb-filter-subject" onchange="filterQuestionBankTable()" class="bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-2.5 text-sm text-slate-100">
+                        <option value="ALL">All Subjects</option>
+                    </select>
+
+                    <select id="qb-filter-difficulty" onchange="filterQuestionBankTable()" class="bg-slate-800 border border-amber-500/30 rounded-xl px-4 py-2.5 text-sm text-slate-100">
+                        <option value="ALL">All Difficulties</option>
+                        <option value="easy">Easy (+10G)</option>
+                        <option value="medium">Medium (+20G)</option>
+                        <option value="hard">Hard (+30G)</option>
+                        <option value="boss">Boss (+50G)</option>
+                    </select>
+                </div>
+
+                <!-- Question Table -->
+                <div class="overflow-x-auto rounded-2xl border border-slate-800">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-950 text-amber-400 font-medieval uppercase text-xs">
+                            <tr>
+                                <th class="p-4">Question</th>
+                                <th class="p-4">Type</th>
+                                <th class="p-4">Subject</th>
+                                <th class="p-4">Difficulty</th>
+                                <th class="p-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="qb-table-body" class="divide-y divide-slate-800">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 6: GAME HISTORY -->
+        <section id="view-game-history" class="view-section hidden max-w-4xl mx-auto">
+            <div class="bg-slate-900 border-2 border-amber-600/40 rounded-3xl p-6 md:p-8">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+                    <h2 class="font-medieval text-3xl font-bold text-amber-400">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Battle History
+                    </h2>
+                    <button onclick="clearGameHistory()" class="text-xs text-red-400 hover:text-red-300 font-semibold">Clear History</button>
+                </div>
+
+                <div id="history-list-container" class="space-y-4">
+                    <!-- History cards injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 7: BACKUP & RESTORE DATA -->
+        <section id="view-backup-data" class="view-section hidden max-w-2xl mx-auto">
+            <div class="bg-slate-900 border-2 border-amber-600/40 rounded-3xl p-6 md:p-8 text-center">
+                <i class="fa-solid fa-database text-5xl text-amber-400 mb-4"></i>
+                <h2 class="font-medieval text-3xl font-bold text-amber-400 mb-2">
+                    Backup & Restore Data
+                </h2>
+                <p class="text-amber-100/70 text-sm mb-8">
+                    Save a full backup file of your questions, custom kingdoms, and game settings to keep your classroom data safe.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button onclick="exportFullDataBackup()" class="p-6 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-300 font-bold flex flex-col items-center gap-3">
+                        <i class="fa-solid fa-download text-3xl"></i>
+                        <span>Export Full Backup (.json)</span>
+                    </button>
+
+                    <button onclick="triggerRestoreBackup()" class="p-6 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-300 font-bold flex flex-col items-center gap-3">
+                        <i class="fa-solid fa-upload text-3xl"></i>
+                        <span>Restore Backup File</span>
+                    </button>
+                    <input type="file" id="input-restore-backup" class="hidden" accept=".json" onchange="handleRestoreBackupFile(event)">
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 8: GLOBAL SETTINGS -->
+        <section id="view-settings" class="view-section hidden max-w-2xl mx-auto">
+            <div class="bg-slate-900 border-2 border-amber-600/40 rounded-3xl p-6 md:p-8">
+                <h2 class="font-medieval text-3xl font-bold text-amber-400 mb-6 pb-4 border-b border-slate-800">
+                    <i class="fa-solid fa-gear"></i> App Preferences
+                </h2>
+
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                        <div>
+                            <div class="font-bold text-slate-200">Sound Effects</div>
+                            <div class="text-xs text-slate-400">Enable synthesized classroom audio effects</div>
+                        </div>
+                        <input type="checkbox" id="pref-sound" checked onchange="toggleAudioMute()" class="w-6 h-6 accent-amber-500">
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                        <div>
+                            <div class="font-bold text-slate-200">Reset Sample Questions</div>
+                            <div class="text-xs text-slate-400">Restore default starter math/science question bank</div>
+                        </div>
+                        <button onclick="resetDefaultQuestions()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs rounded-xl">
+                            Reset Default Questions
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: KINGDOM SHOP -->
+    <div id="modal-shop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-2xl w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('modal-shop')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-100">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
+                <span class="text-3xl">🪙</span>
+                <div>
+                    <h3 class="font-medieval text-2xl font-bold text-amber-400">Kingdom Shop</h3>
+                    <p class="text-xs text-amber-200/60">Purchase abilities with team gold</p>
+                </div>
+            </div>
+
+            <div id="shop-items-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Shop items injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ATTACK TARGET SELECTION -->
+    <div id="modal-target-select" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-red-500 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl text-center">
+            <div class="text-5xl mb-3">⚔️</div>
+            <h3 class="font-medieval text-2xl font-bold text-red-400 mb-2">WHO DO YOU WANT TO ATTACK?</h3>
+            <p class="text-xs text-slate-400 mb-6" id="target-select-subtitle">Select an opposing kingdom to strike</p>
+
+            <div id="target-kingdoms-list" class="space-y-3 mb-6">
+                <!-- Selectable kingdom target buttons -->
+            </div>
+
+            <button onclick="closeModal('modal-target-select')" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 3: QUESTION EDITOR -->
+    <div id="modal-question-editor" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-2xl w-full p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+                <h3 class="font-medieval text-2xl font-bold text-amber-400" id="qe-modal-title">Add New Question</h3>
+                <button onclick="closeModal('modal-question-editor')" class="text-slate-400 hover:text-slate-100">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
+            </div>
+
+            <form id="qe-form" onsubmit="saveQuestionFromModal(event)" class="space-y-4">
+                <input type="hidden" id="qe-id">
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Question Text</label>
+                    <textarea id="qe-question" required rows="3" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Subject</label>
+                        <input type="text" id="qe-subject" required placeholder="Math" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Difficulty</label>
+                        <select id="qe-difficulty" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100">
+                            <option value="easy">Easy (+10 Gold)</option>
+                            <option value="medium">Medium (+20 Gold)</option>
+                            <option value="hard">Hard (+30 Gold)</option>
+                            <option value="boss">Boss (+50 Gold)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Question Type</label>
+                        <select id="qe-type" onchange="adjustQuestionTypeFormFields()" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100">
+                            <option value="multiple_choice">Multiple Choice</option>
+                            <option value="true_false">True / False</option>
+                            <option value="short_answer">Short Answer</option>
+                            <option value="essay">Essay / Teacher Check</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Multiple Choice Fields -->
+                <div id="qe-mc-options" class="space-y-2">
+                    <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Options & Correct Choice</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="qe-opt-a" placeholder="Option A" class="bg-slate-800 border border-amber-500/30 rounded-xl p-2.5 text-sm text-slate-100">
+                        <input type="text" id="qe-opt-b" placeholder="Option B" class="bg-slate-800 border border-amber-500/30 rounded-xl p-2.5 text-sm text-slate-100">
+                        <input type="text" id="qe-opt-c" placeholder="Option C" class="bg-slate-800 border border-amber-500/30 rounded-xl p-2.5 text-sm text-slate-100">
+                        <input type="text" id="qe-opt-d" placeholder="Option D" class="bg-slate-800 border border-amber-500/30 rounded-xl p-2.5 text-sm text-slate-100">
+                    </div>
+                    <label class="block text-xs font-bold uppercase text-amber-200 mt-2">Correct Option</label>
+                    <select id="qe-correct-mc" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-2.5 text-sm text-slate-100">
+                        <option value="A">Option A</option>
+                        <option value="B">Option B</option>
+                        <option value="C">Option C</option>
+                        <option value="D">Option D</option>
+                    </select>
+                </div>
+
+                <!-- Short Answer Fields -->
+                <div id="qe-short-fields" class="hidden">
+                    <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Accepted Answer(s) (comma separated)</label>
+                    <input type="text" id="qe-accepted-answers" placeholder="12, twelve" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100">
+                </div>
+
+                <!-- True / False Fields -->
+                <div id="qe-tf-fields" class="hidden">
+                    <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Correct Answer</label>
+                    <select id="qe-correct-tf" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100">
+                        <option value="True">True</option>
+                        <option value="False">False</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-amber-200 mb-1">Explanation (Optional)</label>
+                    <input type="text" id="qe-explanation" placeholder="Short hint or solution explanation" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-3 text-sm text-slate-100">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('modal-question-editor')" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm">
+                        Save Question
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: TEACHER CONTROLS MODAL -->
+    <div id="modal-teacher-controls" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-lg w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                <h3 class="font-medieval text-xl font-bold text-amber-400">Teacher Override Panel</h3>
+                <button onclick="closeModal('modal-teacher-controls')" class="text-slate-400">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm">
+                <div>
+                    <label class="block font-semibold text-amber-200 mb-1">Select Kingdom to Adjust</label>
+                    <select id="teacher-target-kingdom" class="w-full bg-slate-800 border border-amber-500/30 rounded-xl p-2.5 text-slate-100"></select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="teacherAdjustStat('hp', 20)" class="p-2.5 bg-emerald-900/40 hover:bg-emerald-900/60 border border-emerald-500/40 rounded-xl text-emerald-300 font-bold">+20 HP</button>
+                    <button onclick="teacherAdjustStat('hp', -20)" class="p-2.5 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 rounded-xl text-red-300 font-bold">-20 HP</button>
+                    <button onclick="teacherAdjustStat('gold', 20)" class="p-2.5 bg-amber-900/40 hover:bg-amber-900/60 border border-amber-500/40 rounded-xl text-amber-300 font-bold">+20 Gold</button>
+                    <button onclick="teacherAdjustStat('shield', 20)" class="p-2.5 bg-blue-900/40 hover:bg-blue-900/60 border border-blue-500/40 rounded-xl text-blue-300 font-bold">+20 Shield</button>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex justify-between gap-2">
+                    <button onclick="forceNextTurnOverride()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider">
+                        Force Skip Turn
+                    </button>
+                    <button onclick="closeModal('modal-teacher-controls')" class="px-4 py-2.5 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: VICTORY & GAME OVER BANNER -->
+    <div id="modal-victory" class="fixed inset-0 bg-slate-950/90 backdrop-blur-lg z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-4 border-amber-500 rounded-3xl max-w-xl w-full p-8 shadow-2xl text-center relative overflow-hidden">
+            <div class="text-7xl mb-4 animate-bounce">👑</div>
+            <h2 class="font-medieval text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 mb-2">
+                VICTORY!
+            </h2>
+            <h3 id="victory-winner-name" class="font-medieval text-2xl font-bold text-amber-200 mb-6">
+                Kingdom Azure Rules Supreme!
+            </h3>
+
+            <div id="victory-leaderboard" class="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 mb-6 space-y-2">
+                <!-- Leaderboard rows injected here -->
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button onclick="closeModal('modal-victory'); startNewGameSetup();" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-medieval font-bold text-lg shadow-lg">
+                    Play Again
+                </button>
+                <button onclick="closeModal('modal-victory'); navigateTo('home');" class="px-6 py-3 rounded-xl bg-slate-800 text-slate-300 font-semibold">
+                    Home Screen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           BATTLE OF KINGDOMS - CORE ENGINE & LOCALSTORAGE SYSTEM
+           ========================================================================== */
+
+        // Default Castle, Flag & Emblem presets
+        const CASTLE_PRESETS = [
+            { id: 'royal', name: 'Royal Castle', icon: '🏰', style: 'border-amber-500 bg-amber-900/30' },
+            { id: 'ice', name: 'Ice Citadel', icon: '❄️️', style: 'border-cyan-400 bg-cyan-950/30' },
+            { id: 'fire', name: 'Fire Stronghold', icon: '🔥', style: 'border-red-500 bg-red-950/30' },
+            { id: 'forest', name: 'Forest Keep', icon: '🌲', style: 'border-emerald-500 bg-emerald-950/30' },
+            { id: 'desert', name: 'Desert Palace', icon: '🕌', style: 'border-yellow-600 bg-yellow-950/30' },
+            { id: 'shadow', name: 'Shadow Bastion', icon: '🦇', style: 'border-purple-600 bg-purple-950/30' }
+        ];
+
+        const COLOR_THEMES = [
+            { name: 'Azure', bg: 'bg-blue-600', border: 'border-blue-500', text: 'text-blue-400' },
+            { name: 'Crimson', bg: 'bg-red-600', border: 'border-red-500', text: 'text-red-400' },
+            { name: 'Emerald', bg: 'bg-emerald-600', border: 'border-emerald-500', text: 'text-emerald-400' },
+            { name: 'Gold', bg: 'bg-amber-500', border: 'border-amber-400', text: 'text-amber-400' },
+            { name: 'Amethyst', bg: 'bg-purple-600', border: 'border-purple-500', text: 'text-purple-400' },
+            { name: 'Slate', bg: 'bg-slate-600', border: 'border-slate-400', text: 'text-slate-400' }
+        ];
+
+        const EMBLEMS = ['🐲 Dragon', '🦁 Lion', '🐺 Wolf', '🦅 Eagle', '👑 Crown', '⚔️ Sword', '🛡️ Shield', '🔥 Phoenix'];
+
+        // Shop Items Specification
+        const SHOP_ITEMS = [
+            { id: 'heal', name: 'Healing Potion', cost: 20, icon: '🧪', desc: '+20 Kingdom HP', effect: (t) => { t.hp = Math.min(100, t.hp + 20); } },
+            { id: 'shield', name: 'Fortified Shield', cost: 25, icon: '🛡️', desc: '+20 Shield Absorption', effect: (t) => { t.shield += 20; } },
+            { id: 'fireball', name: 'Fireball Scroll', cost: 30, icon: '🔥', desc: 'Direct 20 Damage to Target', requiresTarget: true, damage: 20 },
+            { id: 'mega', name: 'Mega Strike', cost: 50, icon: '⚡', desc: '35 Massive Damage to Target', requiresTarget: true, damage: 35 },
+            { id: 'double', name: 'Double Attack Buff', cost: 60, icon: '⚔️', desc: 'Next attack deals 2x Damage', effect: (t) => { t.doubleAttackActive = true; } }
+        ];
+
+        // Sample Starter Questions for Immediate Playability
+        const DEFAULT_QUESTIONS = [
+            {
+                id: 'q1',
+                question: 'What is 25% of 80?',
+                subject: 'Mathematics',
+                difficulty: 'easy',
+                type: 'multiple_choice',
+                options: { A: '10', B: '15', C: '20', D: '25' },
+                answer: 'C',
+                explanation: '0.25 × 80 = 20.'
+            },
+            {
+                id: 'q2',
+                question: 'True or False: Photosynthesis produces oxygen as a byproduct.',
+                subject: 'Science',
+                difficulty: 'easy',
+                type: 'true_false',
+                answer: 'True',
+                explanation: 'Plants convert sunlight and carbon dioxide into glucose and oxygen.'
+            },
+            {
+                id: 'q3',
+                question: 'What is the chemical symbol for Water?',
+                subject: 'Science',
+                difficulty: 'medium',
+                type: 'short_answer',
+                acceptedAnswers: ['H2O', 'h2o'],
+                explanation: 'H2O consists of two hydrogen atoms and one oxygen atom.'
+            },
+            {
+                id: 'q4',
+                question: 'Solve for x in the equation: 3x + 15 = 45',
+                subject: 'Mathematics',
+                difficulty: 'medium',
+                type: 'short_answer',
+                acceptedAnswers: ['10'],
+                explanation: '3x = 30, so x = 10.'
+            },
+            {
+                id: 'q5',
+                question: '👑 BOSS: Explain the law of conservation of energy.',
+                subject: 'Science',
+                difficulty: 'boss',
+                type: 'essay',
+                explanation: 'Energy cannot be created or destroyed, only transformed from one form to another.'
+            }
+        ];
+
+        // State Machine
+        let appState = {
+            questionBank: [],
+            gameHistory: [],
+            activeGame: null
+        };
+
+        // Audio Engine using Web Audio API (Synthesized SFX)
+        let audioMuted = false;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioMuted) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'correct') {
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.15); // E5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'attack') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'coin') {
+                    osc.frequency.setValueAtTime(987.77, now); // B5
+                    osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) { console.error('Audio play error:', e); }
+        }
+
+        function toggleAudioMute() {
+            audioMuted = !audioMuted;
+            document.getElementById('pref-sound').checked = !audioMuted;
+            const icon = document.getElementById('audio-icon');
+            if (icon) icon.className = audioMuted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+            showToast(audioMuted ? 'Audio Muted' : 'Audio Enabled');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        // STORAGE MANAGEMENT & AUTO SAVE
+        function loadAppData() {
+            const stored = localStorage.getItem('battle_of_kingdoms_data');
+            if (stored) {
+                try {
+                    appState = JSON.parse(stored);
+                } catch (e) {
+                    console.error('Failed to parse storage:', e);
+                }
+            }
+            if (!appState.questionBank || appState.questionBank.length === 0) {
+                appState.questionBank = [...DEFAULT_QUESTIONS];
+            }
+            saveAppData();
+            updateHomeScreenStats();
+        }
+
+        function saveAppData() {
+            localStorage.setItem('battle_of_kingdoms_data', JSON.stringify(appState));
+            showToast('Auto-saved locally ✓');
+        }
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-900 border border-amber-500/40 text-amber-200 text-xs px-3.5 py-2 rounded-xl shadow-lg transition-all transform translate-y-2 opacity-0 font-medium';
+            toast.innerText = msg;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // NAVIGATION & ROUTER
+        function navigateTo(viewId) {
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
+            const target = document.getElementById('view-' + viewId);
+            if (target) target.classList.remove('hidden');
+
+            if (viewId === 'question-bank') renderQuestionBankTable();
+            if (viewId === 'game-history') renderGameHistory();
+            if (viewId === 'home') updateHomeScreenStats();
+        }
+
+        function updateHomeScreenStats() {
+            document.getElementById('stat-total-questions').innerText = appState.questionBank.length;
+            document.getElementById('stat-total-games').innerText = (appState.gameHistory || []).length;
+            
+            const btnContinue = document.getElementById('btn-continue-game');
+            if (appState.activeGame && !appState.activeGame.isFinished) {
+                btnContinue.disabled = false;
+            } else {
+                btnContinue.disabled = true;
+            }
+        }
+
+        // GAME CREATION & CUSTOMIZATION
+        let setupData = {
+            title: 'Battle of Algebra',
+            subject: 'Mathematics',
+            numTeams: 4,
+            teams: []
+        };
+
+        function startNewGameSetup() {
+            setupData.numTeams = 4;
+            renderTeamCountOptions();
+            generateDefaultTeams();
+            navigateTo('create-game');
+        }
+
+        function renderTeamCountOptions() {
+            const container = document.getElementById('team-count-container');
+            container.innerHTML = '';
+            for (let i = 2; i <= 6; i++) {
+                const btn = document.createElement('button');
+                btn.className = `flex-1 py-3 rounded-xl border text-center font-bold text-sm transition ${setupData.numTeams === i ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`;
+                btn.innerText = i + ' Kingdoms';
+                btn.onclick = () => {
+                    setupData.numTeams = i;
+                    renderTeamCountOptions();
+                    generateDefaultTeams();
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function generateDefaultTeams() {
+            setupData.teams = [];
+            for (let i = 0; i < setupData.numTeams; i++) {
+                const theme = COLOR_THEMES[i % COLOR_THEMES.length];
+                setupData.teams.push({
+                    id: 'team_' + i,
+                    name: `Kingdom ${theme.name}`,
+                    castle: CASTLE_PRESETS[i % CASTLE_PRESETS.length].id,
+                    emblem: EMBLEMS[i % EMBLEMS.length],
+                    theme: theme,
+                    hp: 100,
+                    maxHp: 100,
+                    gold: 0,
+                    shield: 0,
+                    attack: 10,
+                    score: 0,
+                    doubleAttackActive: false
+                });
+            }
+            renderTeamSetupCards();
+        }
+
+        function renderTeamSetupCards() {
+            const container = document.getElementById('setup-teams-list');
+            container.innerHTML = '';
+
+            setupData.teams.forEach((t, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase ${t.theme.text}">Kingdom #${idx + 1}</span>
+                        <span class="text-xl">${CASTLE_PRESETS.find(c => c.id === t.castle).icon}</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Kingdom Name</label>
+                        <input type="text" value="${t.name}" onchange="setupData.teams[${idx}].name = this.value" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Castle</label>
+                            <select onchange="setupData.teams[${idx}].castle = this.value" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100">
+                                ${CASTLE_PRESETS.map(c => `<option value="${c.id}" ${c.id === t.castle ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Emblem</label>
+                            <select onchange="setupData.teams[${idx}].emblem = this.value" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100">
+                                ${EMBLEMS.map(e => `<option value="${e}" ${e === t.emblem ? 'selected' : ''}>${e}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function proceedToSettings() {
+            setupData.title = document.getElementById('setup-game-title').value || 'Battle Game';
+            setupData.subject = document.getElementById('setup-subject').value;
+
+            // Populate subject filter options in settings
+            const filterSelect = document.getElementById('setting-question-filter');
+            const subjects = [...new Set(appState.questionBank.map(q => q.subject))];
+            filterSelect.innerHTML = '<option value="ALL">All Subjects in Question Bank</option>' +
+                subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            navigateTo('game-settings');
+        }
+
+        // BATTLE GAME ENGINE
+        let gameState = {
+            title: '',
+            subject: '',
+            round: 1,
+            activeTeamIndex: 0,
+            teams: [],
+            questionsPool: [],
+            currentQuestion: null,
+            timer: 30,
+            timerInterval: null,
+            isTimerPaused: false,
+            settings: {},
+            isFinished: false
+        };
+
+        function initiateBattleGame() {
+            const startHp = parseInt(document.getElementById('setting-start-hp').value) || 100;
+            const startGold = parseInt(document.getElementById('setting-start-gold').value) || 0;
+            const turnTime = parseInt(document.getElementById('setting-turn-time').value) || 30;
+            const filterSubject = document.getElementById('setting-question-filter').value;
+
+            // Prepare question queue
+            let questions = [...appState.questionBank];
+            if (filterSubject !== 'ALL') {
+                questions = questions.filter(q => q.subject === filterSubject);
+            }
+            if (questions.length === 0) {
+                questions = [...appState.questionBank]; // Fallback if filter empty
+            }
+
+            // Shuffle questions
+            questions.sort(() => Math.random() - 0.5);
+
+            gameState = {
+                title: setupData.title,
+                subject: setupData.subject,
+                round: 1,
+                activeTeamIndex: 0,
+                teams: setupData.teams.map(t => ({
+                    ...t,
+                    hp: startHp,
+                    maxHp: startHp,
+                    gold: startGold,
+                    shield: 0,
+                    score: 0
+                })),
+                questionsPool: questions,
+                currentQuestion: null,
+                timer: turnTime,
+                initialTurnTime: turnTime,
+                timerInterval: null,
+                isTimerPaused: false,
+                settings: {
+                    wrongPenalty: document.getElementById('setting-wrong-penalty').checked,
+                    randomEvents: document.getElementById('setting-random-events').checked,
+                    criticalHits: document.getElementById('setting-critical-hits').checked,
+                    powerCards: document.getElementById('setting-power-cards').checked
+                },
+                isFinished: false
+            };
+
+            appState.activeGame = gameState;
+            saveAppData();
+
+            document.getElementById('battle-game-title').innerText = gameState.title;
+            navigateTo('battle');
+            startCurrentTurn();
+        }
+
+        function resumeSavedGame() {
+            if (!appState.activeGame) return;
+            gameState = appState.activeGame;
+            document.getElementById('battle-game-title').innerText = gameState.title;
+            navigateTo('battle');
+            renderBattleField();
+            loadQuestionForCurrentTurn();
+        }
+
+        function startCurrentTurn() {
+            if (gameState.isFinished) return;
+
+            // Check if only 1 kingdom remains alive
+            const aliveTeams = gameState.teams.filter(t => t.hp > 0);
+            if (aliveTeams.length <= 1 && gameState.teams.length > 1) {
+                triggerVictory(aliveTeams[0] || gameState.teams[0]);
+                return;
+            }
+
+            // Skip turn if active team is dead
+            if (gameState.teams[gameState.activeTeamIndex].hp <= 0) {
+                nextTurn();
+                return;
+            }
+
+            renderBattleField();
+            loadQuestionForCurrentTurn();
+            resetTurnTimer();
+
+            // Trigger Random Event check occasionally
+            if (gameState.settings.randomEvents && Math.random() < 0.25) {
+                triggerRandomKingdomEvent();
+            }
+        }
+
+        function renderBattleField() {
+            document.getElementById('battle-round-num').innerText = gameState.round;
+
+            const activeTeam = gameState.teams[gameState.activeTeamIndex];
+            const turnBanner = document.getElementById('turn-banner');
+            turnBanner.className = `mb-6 p-4 rounded-2xl text-center font-medieval font-black text-2xl transition-all duration-300 flex items-center justify-center gap-4 border-2 ${activeTeam.theme.bg} text-white ${activeTeam.theme.border} shadow-lg`;
+            turnBanner.innerHTML = `
+                <span>👑 CURRENT TURN: ${activeTeam.name.toUpperCase()}</span>
+                <span class="text-sm px-3 py-1 bg-black/30 rounded-lg">Score: ${activeTeam.score}</span>
+            `;
+
+            // Kingdom Cards Grid
+            const grid = document.getElementById('battle-kingdoms-grid');
+            grid.innerHTML = '';
+
+            gameState.teams.forEach((t, idx) => {
+                const isActive = idx === gameState.activeTeamIndex;
+                const castleObj = CASTLE_PRESETS.find(c => c.id === t.castle) || CASTLE_PRESETS[0];
+                const isDead = t.hp <= 0;
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-900 border-2 rounded-2xl p-3 flex flex-col justify-between transition-all ${isActive ? 'border-amber-400 glow-gold scale-[1.03]' : 'border-slate-800 opacity-90'} ${isDead ? 'opacity-40 grayscale border-red-900' : ''}`;
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold ${t.theme.text}">${t.emblem}</span>
+                        <span class="text-2xl">${isDead ? '🏴‍☠️' : castleObj.icon}</span>
+                    </div>
+
+                    <div class="font-medieval font-bold text-sm truncate mb-2 ${t.theme.text}">
+                        ${t.name}
+                    </div>
+
+                    <!-- HP Bar -->
+                    <div class="mb-1">
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-red-400">❤️ HP</span>
+                            <span>${t.hp}/${t.maxHp}</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-red-500 transition-all duration-300" style="width: ${Math.max(0, (t.hp / t.maxHp) * 100)}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats overview -->
+                    <div class="grid grid-cols-2 gap-1 text-[11px] font-medium text-slate-300 mt-2 bg-slate-950/60 p-2 rounded-xl">
+                        <div>🪙 ${t.gold} Gold</div>
+                        <div>🛡️️ ${t.shield} Shield</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function loadQuestionForCurrentTurn() {
+            if (gameState.questionsPool.length === 0) {
+                // Recycle question bank if exhausted
+                gameState.questionsPool = [...appState.questionBank].sort(() => Math.random() - 0.5);
+            }
+
+            const q = gameState.questionsPool.pop();
+            gameState.currentQuestion = q;
+
+            document.getElementById('q-subject-badge').innerText = q.subject || 'General';
+            const diffBadge = document.getElementById('q-difficulty-badge');
+            diffBadge.innerText = (q.difficulty || 'easy').toUpperCase();
+
+            // Reward amounts mapping
+            let rewardGold = 10;
+            if (q.difficulty === 'medium') rewardGold = 20;
+            if (q.difficulty === 'hard') rewardGold = 30;
+            if (q.difficulty === 'boss') rewardGold = 50;
+
+            document.getElementById('q-reward-indicator').innerHTML = `Reward: <span class="text-amber-700 font-bold">+${rewardGold} 🪙 Gold</span>`;
+
+            document.getElementById('battle-question-text').innerText = q.question;
+
+            // Render Answer Component Area
+            const answerArea = document.getElementById('battle-answer-area');
+            answerArea.innerHTML = '';
+
+            document.getElementById('post-answer-actions').classList.add('hidden');
+
+            if (q.type === 'multiple_choice') {
+                const optsGrid = document.createElement('div');
+                optsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+                ['A', 'B', 'C', 'D'].forEach(opt => {
+                    if (!q.options || !q.options[opt]) return;
+                    const btn = document.createElement('button');
+                    btn.className = 'p-4 rounded-xl bg-slate-900 border-2 border-amber-800/40 hover:border-amber-500 text-slate-900 text-left font-bold text-base transition hover:scale-[1.01] flex items-center gap-3 shadow-md';
+                    btn.innerHTML = `<span class="w-8 h-8 rounded-lg bg-amber-200/80 text-amber-900 flex items-center justify-center font-black">${opt}</span> <span>${q.options[opt]}</span>`;
+                    btn.onclick = () => submitAnswer(opt);
+                    optsGrid.appendChild(btn);
+                });
+                answerArea.appendChild(optsGrid);
+            } else if (q.type === 'true_false') {
+                const tfGrid = document.createElement('div');
+                tfGrid.className = 'grid grid-cols-2 gap-4 max-w-md mx-auto';
+                ['True', 'False'].forEach(val => {
+                    const btn = document.createElement('button');
+                    btn.className = `p-4 rounded-xl font-bold text-lg text-white shadow-lg transition hover:scale-105 ${val === 'True' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'}`;
+                    btn.innerText = val.toUpperCase();
+                    btn.onclick = () => submitAnswer(val);
+                    tfGrid.appendChild(btn);
+                });
+                answerArea.appendChild(tfGrid);
+            } else if (q.type === 'short_answer') {
+                const box = document.createElement('div');
+                box.className = 'flex gap-3 max-w-md mx-auto';
+                box.innerHTML = `
+                    <input type="text" id="short-answer-input" placeholder="Type answer..." class="flex-grow bg-slate-900 border-2 border-amber-800/50 rounded-xl px-4 py-3 text-slate-900 font-bold focus:outline-none">
+                    <button onclick="submitAnswer(document.getElementById('short-answer-input').value)" class="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl">Submit</button>
+                `;
+                answerArea.appendChild(box);
+            } else if (q.type === 'essay') {
+                const box = document.createElement('div');
+                box.className = 'text-center space-y-4';
+                box.innerHTML = `
+                    <p class="text-sm font-semibold text-amber-900">Teacher Evaluation Required:</p>
+                    <div class="flex justify-center gap-4">
+                        <button onclick="submitAnswer(true)" class="px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:scale-105">CORRECT ✓</button>
+                        <button onclick="submitAnswer(false)" class="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg hover:scale-105">WRONG ✗</button>
+                    </div>
+                `;
+                answerArea.appendChild(box);
+            }
+        }
+
+        function submitAnswer(userAns) {
+            pauseTurnTimer();
+            const q = gameState.currentQuestion;
+            let isCorrect = false;
+
+            if (q.type === 'multiple_choice') {
+                isCorrect = (userAns === q.answer);
+            } else if (q.type === 'true_false') {
+                isCorrect = (userAns.toString().toLowerCase() === q.answer.toString().toLowerCase());
+            } else if (q.type === 'short_answer') {
+                const cleaned = (userAns || '').toString().trim().toLowerCase();
+                isCorrect = (q.acceptedAnswers || [q.answer]).some(a => a.toString().trim().toLowerCase() === cleaned);
+            } else if (q.type === 'essay') {
+                isCorrect = (userAns === true);
+            }
+
+            const currentTeam = gameState.teams[gameState.activeTeamIndex];
+
+            if (isCorrect) {
+                playSound('correct');
+                let goldReward = 10;
+                if (q.difficulty === 'medium') goldReward = 20;
+                if (q.difficulty === 'hard') goldReward = 30;
+                if (q.difficulty === 'boss') goldReward = 50;
+
+                currentTeam.gold += goldReward;
+                currentTeam.score += (goldReward * 10);
+
+                showToast(`🎉 CORRECT! +${goldReward} Gold awarded!`);
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+
+                // Reveal post-answer actions (Attack / Shop)
+                document.getElementById('post-answer-actions').classList.remove('hidden');
+            } else {
+                playSound('wrong');
+                if (gameState.settings.wrongPenalty) {
+                    currentTeam.hp = Math.max(0, currentTeam.hp - 5);
+                    showToast('❌ WRONG ANSWER! Lost 5 HP');
+                } else {
+                    showToast('❌ WRONG ANSWER!');
+                }
+                setTimeout(() => nextTurn(), 1800);
+            }
+
+            renderBattleField();
+            saveAppData();
+        }
+
+        // ATTACK & SHOP MECHANICS
+        function prepareAttackTargetSelection() {
+            const modal = document.getElementById('modal-target-select');
+            const container = document.getElementById('target-kingdoms-list');
+            container.innerHTML = '';
+
+            const currentTeam = gameState.teams[gameState.activeTeamIndex];
+
+            gameState.teams.forEach((t, idx) => {
+                if (idx === gameState.activeTeamIndex || t.hp <= 0) return;
+
+                const btn = document.createElement('button');
+                btn.className = 'w-full p-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-between text-slate-100 font-bold transition';
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">${CASTLE_PRESETS.find(c => c.id === t.castle).icon}</span>
+                        <span>${t.name}</span>
+                    </div>
+                    <span class="text-xs text-red-400">❤️ ${t.hp} HP | 🛡️ ${t.shield} Shield</span>
+                `;
+                btn.onclick = () => {
+                    closeModal('modal-target-select');
+                    executeKingdomAttack(idx);
+                };
+                container.appendChild(btn);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function executeKingdomAttack(targetIdx) {
+            playSound('attack');
+            const attacker = gameState.teams[gameState.activeTeamIndex];
+            const target = gameState.teams[targetIdx];
+
+            let baseDamage = attacker.attack || 10;
+
+            if (attacker.doubleAttackActive) {
+                baseDamage *= 2;
+                attacker.doubleAttackActive = false;
+                showToast('⚔️ DOUBLE ATTACK ACTIVATED!');
+            }
+
+            // Critical hit calculation (10% chance)
+            if (gameState.settings.criticalHits && Math.random() < 0.10) {
+                baseDamage *= 2;
+                showToast('🔥 CRITICAL HIT! 2X DAMAGE!');
+            }
+
+            // Shield calculation formula: Damage = Attack - Shield (Min damage 5)
+            let actualHpDamage = baseDamage;
+            if (target.shield > 0) {
+                if (target.shield >= baseDamage) {
+                    target.shield -= baseDamage;
+                    actualHpDamage = 0;
+                } else {
+                    actualHpDamage = baseDamage - target.shield;
+                    target.shield = 0;
+                }
+            }
+
+            actualHpDamage = Math.max(actualHpDamage, 5); // Minimum 5 damage
+            target.hp = Math.max(0, target.hp - actualHpDamage);
+
+            showToast(`💥 ${attacker.name} attacked ${target.name} for ${actualHpDamage} damage!`);
+
+            if (target.hp <= 0) {
+                showToast(`🏴‍☠️ KINGDOM FALLEN: ${target.name} has been defeated!`);
+            }
+
+            renderBattleField();
+            saveAppData();
+
+            setTimeout(() => nextTurn(), 1500);
+        }
+
+        function openKingdomShop() {
+            const modal = document.getElementById('modal-shop');
+            const container = document.getElementById('shop-items-grid');
+            container.innerHTML = '';
+
+            const currentTeam = gameState.teams[gameState.activeTeamIndex];
+
+            SHOP_ITEMS.forEach(item => {
+                const canAfford = currentTeam.gold >= item.cost;
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-2xl border flex flex-col justify-between ${canAfford ? 'bg-slate-800 border-amber-500/40' : 'bg-slate-900 border-slate-800 opacity-50'}`;
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-2xl">${item.icon}</span>
+                            <span class="text-xs font-bold text-amber-400">🪙 ${item.cost} Gold</span>
+                        </div>
+                        <h4 class="font-bold text-slate-100 text-sm mb-1">${item.name}</h4>
+                        <p class="text-xs text-slate-400 mb-3">${item.desc}</p>
+                    </div>
+
+                    <button onclick="buyShopItem('${item.id}')" ${!canAfford ? 'disabled' : ''} class="w-full py-2 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 text-slate-950 font-bold rounded-xl text-xs uppercase">
+                        Purchase
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function buyShopItem(itemId) {
+            const item = SHOP_ITEMS.find(i => i.id === itemId);
+            const currentTeam = gameState.teams[gameState.activeTeamIndex];
+
+            if (!item || currentTeam.gold < item.cost) return;
+
+            currentTeam.gold -= item.cost;
+            playSound('coin');
+
+            if (item.requiresTarget) {
+                closeModal('modal-shop');
+                // Target selection for offensive magic
+                prepareOffensiveSpellTarget(item.damage);
+            } else {
+                item.effect(currentTeam);
+                showToast(`✨ Bought ${item.name}!`);
+                openKingdomShop(); // Refresh
+                renderBattleField();
+            }
+            saveAppData();
+        }
+
+        function prepareOffensiveSpellTarget(damage) {
+            const modal = document.getElementById('modal-target-select');
+            const container = document.getElementById('target-kingdoms-list');
+            container.innerHTML = '';
+
+            gameState.teams.forEach((t, idx) => {
+                if (idx === gameState.activeTeamIndex || t.hp <= 0) return;
+
+                const btn = document.createElement('button');
+                btn.className = 'w-full p-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-between text-slate-100 font-bold transition';
+                btn.innerHTML = `<span>${CASTLE_PRESETS.find(c => c.id === t.castle).icon} ${t.name}</span> <span class="text-xs text-red-400">HP: ${t.hp}</span>`;
+                btn.onclick = () => {
+                    closeModal('modal-target-select');
+                    t.hp = Math.max(0, t.hp - damage);
+                    showToast(`🔥 Cast Magic Spell on ${t.name} for ${damage} Damage!`);
+                    renderBattleField();
+                    saveAppData();
+                };
+                container.appendChild(btn);
+            });
+
+            modal.classList.remove('hidden');
+        }
+
+        function triggerRandomKingdomEvent() {
+            const events = [
+                { name: '💰 GOLD RUSH', desc: 'All kingdoms receive +10 Gold!', apply: () => gameState.teams.forEach(t => t.gold += 10) },
+                { name: '👑 ROYAL BLESSING', desc: 'Lowest HP Kingdom heals +20 HP!', apply: () => {
+                    const sorted = [...gameState.teams].sort((a,b) => a.hp - b.hp);
+                    if (sorted[0]) sorted[0].hp = Math.min(100, sorted[0].hp + 20);
+                }},
+                { name: '📦 TREASURE CHEST', desc: 'Active kingdom found a secret chest with +30 Gold!', apply: () => {
+                    gameState.teams[gameState.activeTeamIndex].gold += 30;
+                }}
+            ];
+
+            const ev = events[Math.floor(Math.random() * events.length)];
+            ev.apply();
+            showToast(`EVENT: ${ev.name} - ${ev.desc}`);
+        }
+
+        function nextTurn() {
+            pauseTurnTimer();
+            gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
+
+            if (gameState.activeTeamIndex === 0) {
+                gameState.round++;
+            }
+
+            startCurrentTurn();
+        }
+
+        // TIMER LOGIC
+        function resetTurnTimer() {
+            pauseTurnTimer();
+            if (!gameState.initialTurnTime || gameState.initialTurnTime <= 0) return;
+
+            gameState.timer = gameState.initialTurnTime;
+            document.getElementById('timer-sec').innerText = gameState.timer;
+
+            gameState.timerInterval = setInterval(() => {
+                if (!gameState.isTimerPaused) {
+                    gameState.timer--;
+                    document.getElementById('timer-sec').innerText = gameState.timer;
+
+                    if (gameState.timer <= 0) {
+                        pauseTurnTimer();
+                        showToast('⏰ TIME UP! Turn Expired');
+                        nextTurn();
+                    }
+                }
+            }, 1000);
+        }
+
+        function pauseTurnTimer() {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+        }
+
+        function togglePauseTimer() {
+            gameState.isTimerPaused = !gameState.isTimerPaused;
+            const btn = document.getElementById('btn-pause-timer');
+            btn.innerHTML = gameState.isTimerPaused ? '<i class="fa-solid fa-play"></i>' : '<i class="fa-solid fa-pause"></i>';
+        }
+
+        function openTeacherControlModal() {
+            const modal = document.getElementById('modal-teacher-controls');
+            const select = document.getElementById('teacher-target-kingdom');
+            select.innerHTML = gameState.teams.map((t, i) => `<option value="${i}">${t.name} (HP: ${t.hp}, Gold: ${t.gold})</option>`).join('');
+            modal.classList.remove('hidden');
+        }
+
+        function teacherAdjustStat(stat, delta) {
+            const idx = parseInt(document.getElementById('teacher-target-kingdom').value);
+            const team = gameState.teams[idx];
+            if (!team) return;
+
+            if (stat === 'hp') team.hp = Math.max(0, Math.min(team.maxHp, team.hp + delta));
+            if (stat === 'gold') team.gold = Math.max(0, team.gold + delta);
+            if (stat === 'shield') team.shield = Math.max(0, team.shield + delta);
+
+            showToast(`Teacher adjusted ${team.name}'s ${stat.toUpperCase()}`);
+            renderBattleField();
+            saveAppData();
+        }
+
+        function forceNextTurnOverride() {
+            closeModal('modal-teacher-controls');
+            nextTurn();
+        }
+
+        function triggerVictory(winner) {
+            gameState.isFinished = true;
+            pauseTurnTimer();
+
+            // Record to history
+            const historyEntry = {
+                id: 'hist_' + Date.now(),
+                title: gameState.title,
+                winner: winner.name,
+                rounds: gameState.round,
+                date: new Date().toLocaleDateString()
+            };
+            appState.gameHistory.unshift(historyEntry);
+            saveAppData();
+
+            document.getElementById('victory-winner-name').innerText = `${winner.name} Rules Supreme!`;
+
+            const leaderboard = document.getElementById('victory-leaderboard');
+            leaderboard.innerHTML = '';
+            const sorted = [...gameState.teams].sort((a, b) => b.score - a.score);
+
+            sorted.forEach((t, i) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2 rounded-xl text-sm font-bold ' + (i === 0 ? 'bg-amber-500/20 text-amber-300' : 'text-slate-300');
+                row.innerHTML = `<span>#${i + 1} ${t.name}</span> <span>Score: ${t.score}</span>`;
+                leaderboard.appendChild(row);
+            });
+
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
+            document.getElementById('modal-victory').classList.remove('hidden');
+        }
+
+        // QUESTION BANK MANAGER
+        function renderQuestionBankTable() {
+            const tbody = document.getElementById('qb-table-body');
+            tbody.innerHTML = '';
+
+            // Update subject filter dropdown
+            const filterSubSelect = document.getElementById('qb-filter-subject');
+            const subjects = [...new Set(appState.questionBank.map(q => q.subject))];
+            filterSubSelect.innerHTML = '<option value="ALL">All Subjects</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            const search = (document.getElementById('qb-search').value || '').toLowerCase();
+            const filterSubject = document.getElementById('qb-filter-subject').value;
+            const filterDiff = document.getElementById('qb-filter-difficulty').value;
+
+            const filtered = appState.questionBank.filter(q => {
+                const matchSearch = q.question.toLowerCase().includes(search);
+                const matchSub = (filterSubject === 'ALL' || q.subject === filterSubject);
+                const matchDiff = (filterDiff === 'ALL' || q.difficulty === filterDiff);
+                return matchSearch && matchSub && matchDiff;
+            });
+
+            filtered.forEach(q => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/60 border-b border-slate-800';
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-200 max-w-xs truncate">${q.question}</td>
+                    <td class="p-4 text-xs font-semibold text-slate-400 uppercase">${q.type}</td>
+                    <td class="p-4 text-xs font-semibold text-amber-300">${q.subject}</td>
+                    <td class="p-4"><span class="text-xs font-bold uppercase px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">${q.difficulty}</span></td>
+                    <td class="p-4 text-center space-x-2">
+                        <button onclick="editQuestionModal('${q.id}')" class="text-amber-400 hover:text-amber-300 p-1"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="duplicateQuestion('${q.id}')" class="text-blue-400 hover:text-blue-300 p-1"><i class="fa-solid fa-copy"></i></button>
+                        <button onclick="deleteQuestion('${q.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterQuestionBankTable() {
+            renderQuestionBankTable();
+        }
+
+        function openQuestionModal(qId = null) {
+            document.getElementById('qe-form').reset();
+            document.getElementById('qe-id').value = '';
+
+            if (qId) {
+                const q = appState.questionBank.find(item => item.id === qId);
+                if (q) {
+                    document.getElementById('qe-modal-title').innerText = 'Edit Question';
+                    document.getElementById('qe-id').value = q.id;
+                    document.getElementById('qe-question').value = q.question;
+                    document.getElementById('qe-subject').value = q.subject;
+                    document.getElementById('qe-difficulty').value = q.difficulty;
+                    document.getElementById('qe-type').value = q.type;
+
+                    if (q.options) {
+                        document.getElementById('qe-opt-a').value = q.options.A || '';
+                        document.getElementById('qe-opt-b').value = q.options.B || '';
+                        document.getElementById('qe-opt-c').value = q.options.C || '';
+                        document.getElementById('qe-opt-d').value = q.options.D || '';
+                        document.getElementById('qe-correct-mc').value = q.answer || 'A';
+                    }
+
+                    if (q.acceptedAnswers) {
+                        document.getElementById('qe-accepted-answers').value = q.acceptedAnswers.join(', ');
+                    }
+
+                    document.getElementById('qe-explanation').value = q.explanation || '';
+                }
+            } else {
+                document.getElementById('qe-modal-title').innerText = 'Add New Question';
+            }
+
+            adjustQuestionTypeFormFields();
+            document.getElementById('modal-question-editor').classList.remove('hidden');
+        }
+
+        function adjustQuestionTypeFormFields() {
+            const type = document.getElementById('qe-type').value;
+            document.getElementById('qe-mc-options').classList.toggle('hidden', type !== 'multiple_choice');
+            document.getElementById('qe-short-fields').classList.toggle('hidden', type !== 'short_answer');
+            document.getElementById('qe-tf-fields').classList.toggle('hidden', type !== 'true_false');
+        }
+
+        function saveQuestionFromModal(e) {
+            e.preventDefault();
+            const id = document.getElementById('qe-id').value || ('q_' + Date.now());
+            const type = document.getElementById('qe-type').value;
+
+            let questionObj = {
+                id: id,
+                question: document.getElementById('qe-question').value,
+                subject: document.getElementById('qe-subject').value,
+                difficulty: document.getElementById('qe-difficulty').value,
+                type: type,
+                explanation: document.getElementById('qe-explanation').value
+            };
+
+            if (type === 'multiple_choice') {
+                questionObj.options = {
+                    A: document.getElementById('qe-opt-a').value,
+                    B: document.getElementById('qe-opt-b').value,
+                    C: document.getElementById('qe-opt-c').value,
+                    D: document.getElementById('qe-opt-d').value
+                };
+                questionObj.answer = document.getElementById('qe-correct-mc').value;
+            } else if (type === 'true_false') {
+                questionObj.answer = document.getElementById('qe-correct-tf').value;
+            } else if (type === 'short_answer') {
+                const val = document.getElementById('qe-accepted-answers').value;
+                questionObj.acceptedAnswers = val.split(',').map(s => s.trim());
+                questionObj.answer = questionObj.acceptedAnswers[0] || '';
+            }
+
+            const existingIdx = appState.questionBank.findIndex(q => q.id === id);
+            if (existingIdx >= 0) {
+                appState.questionBank[existingIdx] = questionObj;
+            } else {
+                appState.questionBank.unshift(questionObj);
+            }
+
+            saveAppData();
+            closeModal('modal-question-editor');
+            renderQuestionBankTable();
+            showToast('Question Saved ✓');
+        }
+
+        function editQuestionModal(qId) {
+            openQuestionModal(qId);
+        }
+
+        function duplicateQuestion(qId) {
+            const q = appState.questionBank.find(item => item.id === qId);
+            if (!q) return;
+            const copy = JSON.parse(JSON.stringify(q));
+            copy.id = 'q_' + Date.now();
+            copy.question += ' (Copy)';
+            appState.questionBank.unshift(copy);
+            saveAppData();
+            renderQuestionBankTable();
+            showToast('Question Duplicated');
+        }
+
+        function deleteQuestion(qId) {
+            appState.questionBank = appState.questionBank.filter(q => q.id !== qId);
+            saveAppData();
+            renderQuestionBankTable();
+            showToast('Question Deleted');
+        }
+
+        // IMPORT & EXPORT UTILITIES
+        function triggerCSVImport() {
+            document.getElementById('input-import-file').click();
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    if (file.name.endsWith('.json')) {
+                        const parsed = JSON.parse(content);
+                        if (Array.isArray(parsed)) {
+                            appState.questionBank = [...parsed, ...appState.questionBank];
+                            saveAppData();
+                            renderQuestionBankTable();
+                            showToast(`Imported ${parsed.length} questions successfully!`);
+                        }
+                    } else if (file.name.endsWith('.csv')) {
+                        // Parse CSV
+                        const lines = content.split('\n');
+                        let count = 0;
+                        lines.slice(1).forEach(line => {
+                            if (!line.trim()) return;
+                            const parts = line.split(',');
+                            if (parts.length >= 8) {
+                                appState.questionBank.unshift({
+                                    id: 'q_' + Date.now() + Math.random(),
+                                    question: parts[0].trim(),
+                                    type: parts[1].trim(),
+                                    options: { A: parts[2], B: parts[3], C: parts[4], D: parts[5] },
+                                    answer: parts[6].trim(),
+                                    difficulty: parts[7].trim() || 'easy',
+                                    subject: 'CSV Import'
+                                });
+                                count++;
+                            }
+                        });
+                        saveAppData();
+                        renderQuestionBankTable();
+                        showToast(`Imported ${count} CSV questions!`);
+                    }
+                } catch (err) {
+                    showToast('Failed to parse import file!');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportQuestionsJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState.questionBank, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "battle-kingdoms-questions.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function exportFullDataBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "battle-of-kingdoms-backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerRestoreBackup() {
+            document.getElementById('input-restore-backup').click();
+        }
+
+        function handleRestoreBackupFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.questionBank) {
+                        appState = parsed;
+                        saveAppData();
+                        updateHomeScreenStats();
+                        showToast('Full Backup Restored Successfully!');
+                    }
+                } catch (err) {
+                    showToast('Invalid backup file!');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderGameHistory() {
+            const container = document.getElementById('history-list-container');
+            container.innerHTML = '';
+
+            if (!appState.gameHistory || appState.gameHistory.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-slate-500 font-medium">No previous battle records found.</div>';
+                return;
+            }
+
+            appState.gameHistory.forEach(h => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex justify-between items-center';
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-amber-300 text-base">${h.title}</h4>
+                        <p class="text-xs text-slate-400">Winner: <span class="text-emerald-400 font-bold">${h.winner}</span> | ${h.rounds} Rounds</p>
+                    </div>
+                    <span class="text-xs text-slate-500 font-mono">${h.date}</span>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function clearGameHistory() {
+            appState.gameHistory = [];
+            saveAppData();
+            renderGameHistory();
+            showToast('History Cleared');
+        }
+
+        function resetDefaultQuestions() {
+            appState.questionBank = [...DEFAULT_QUESTIONS];
+            saveAppData();
+            showToast('Reset to Default Sample Questions ✓');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // INITIALIZATION ON LOAD
+        window.onload = function() {
+            loadAppData();
+            navigateTo('home');
+        };
+    </script>
+</body>
+</html>
